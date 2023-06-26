@@ -1,14 +1,14 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -40,12 +40,20 @@ pd.set_option('display.max_columns', 500)
 # ## data load
 
 # +
-preprocess_path = '../../../../input/preprocess/cite/'
+preprocess_path = '../../../../input/preprocess/' #cite/'
 validation_path = '../../../../input/fold/'
 
-target_path = '../../../../input/target/'
-feature_path = '../../../../input/features/cite/'
-output_path = '../../../../model/cite/mlp/'
+# target_path = '../../../../input/target/'
+# feature_path = '../../../../input/features/cite/'
+# output_path = '../../../../model/cite/mlp/'
+lrz_path = '/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/open-problems-multimodal-3rd-solution/'
+
+# preprocess_path = lrz_path + 'input/preprocess/'
+# validation_path = lrz_path + 'input/fold/'
+
+target_path = lrz_path + 'input/target/'
+feature_path = lrz_path + 'input/features/cite/'
+output_path = lrz_path + 'model/cite/mlp/'
 
 # +
 df_meta = pd.read_pickle(validation_path + "cite_fold_val_df.pickle")
@@ -58,7 +66,8 @@ fold_df.shape
 del X
 # -
 
-Y = pd.read_hdf(target_path + "train_cite_targets.h5")
+# Y = pd.read_hdf(target_path + "train_cite_targets.h5")
+Y = pd.read_hdf('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/neurips_competition_data/train_cite_targets.h5')
 Y = np.array(Y)
 
 # ### feature path
@@ -66,28 +75,26 @@ Y = np.array(Y)
 # +
 feature_dict = {}
 
-feature_dict['add_con_imp'] = ['X_add_con_imp.pickle', 'X_test_add_con_imp.pickle']
-feature_dict['last_v3'] = ['X_last_v3.pickle', 'X_test_last_v3.pickle']
-feature_dict['c_add_w2v_v1_mish'] = ['X_c_add_w2v_v1.pickle', 'X_test_c_add_w2v_v1.pickle']
-feature_dict['c_add_w2v_v1'] = ['X_c_add_w2v_v1.pickle', 'X_test_c_add_w2v_v1.pickle']
-feature_dict['c_add_84_v1'] = ['X_c_add_84_v1.pickle', 'X_test_c_add_84_v1.pickle']
-feature_dict['c_add_120_v1'] = ['X_c_add_v1.pickle', 'X_test_c_add_v1.pickle']
+# feature_dict['add_con_imp'] = ['X_add_con_imp.pickle', 'X_test_add_con_imp.pickle']
+# feature_dict['last_v3'] = ['X_last_v3.pickle', 'X_test_last_v3.pickle']
+# feature_dict['c_add_w2v_v1_mish'] = ['X_c_add_w2v_v1.pickle', 'X_test_c_add_w2v_v1.pickle']
+# feature_dict['c_add_w2v_v1'] = ['X_c_add_w2v_v1.pickle', 'X_test_c_add_w2v_v1.pickle']
+# feature_dict['c_add_84_v1'] = ['X_c_add_84_v1.pickle', 'X_test_c_add_84_v1.pickle']
+# feature_dict['c_add_120_v1'] = ['X_c_add_v1.pickle', 'X_test_c_add_v1.pickle']
 
-feature_dict['w2v_cell'] = ['X_feature_w2v_cell.pickle', 'X_test_feature_w2v_cell.pickle']
-feature_dict['best_cell_120'] = ['X_best_cell_128_120.pickle', 'X_test_best_cell_128_120.pickle']
-feature_dict['cluster_cell'] = ['X_cluster_cell_128.pickle', 'X_test_cluster_cell_128.pickle']
+# feature_dict['w2v_cell'] = ['X_feature_w2v_cell.pickle', 'X_test_feature_w2v_cell.pickle']
+# feature_dict['best_cell_120'] = ['X_best_cell_128_120.pickle', 'X_test_best_cell_128_120.pickle']
+# feature_dict['cluster_cell'] = ['X_cluster_cell_128.pickle', 'X_test_cluster_cell_128.pickle']
 
-feature_dict['w2v_128'] = ['X_feature_w2v.pickle', 'X_test_feature_w2v.pickle']
-feature_dict['imp_w2v_128'] = ['X_feature_imp_w2v.pickle', 'X_test_feature_imp_w2v.pickle']
-feature_dict['snorm'] = ['X_feature_snorm.pickle', 'X_test_feature_snorm.pickle']
-feature_dict['best_128'] = ['X_best_128.pickle', 'X_test_best_128.pickle']
-feature_dict['best_64'] = ['X_best_64.pickle', 'X_test_best_64.pickle']
-feature_dict['cluster_128'] = ['X_cluster_128.pickle', 'X_test_cluster_128.pickle']
-feature_dict['cluster_64'] = ['X_cluster_64.pickle', 'X_test_cluster_64.pickle']
+# feature_dict['w2v_128'] = ['X_feature_w2v.pickle', 'X_test_feature_w2v.pickle']
+# feature_dict['imp_w2v_128'] = ['X_feature_imp_w2v.pickle', 'X_test_feature_imp_w2v.pickle']
+# feature_dict['snorm'] = ['X_feature_snorm.pickle', 'X_test_feature_snorm.pickle']
+# feature_dict['best_128'] = ['X_best_128.pickle', 'X_test_best_128.pickle']
+# feature_dict['best_64'] = ['X_best_64.pickle', 'X_test_best_64.pickle']
+# feature_dict['cluster_128'] = ['X_cluster_128.pickle', 'X_test_cluster_128.pickle']
+# feature_dict['cluster_64'] = ['X_cluster_64.pickle', 'X_test_cluster_64.pickle']
 feature_dict['svd_128'] = ['X_svd_128.pickle', 'X_test_svd_128.pickle']
-feature_dict['svd_64'] = ['X_svd_64.pickle', 'X_test_svd_64.pickle']
-
-
+# feature_dict['svd_64'] = ['X_svd_64.pickle', 'X_test_svd_64.pickle']
 # -
 
 # ### function
@@ -226,10 +233,13 @@ def train_loop(model, optimizer, loader, epoch):
 
     with tqdm(total=len(loader),unit="batch") as pbar:
         pbar.set_description(f"Epoch{epoch}")
-
+        print(2)
+        print(loader)
         for d in loader:
-            X = d['X'].to(device)
-            y = d['y'].to(device)
+            print(3)
+            print(d)
+            X = d['X'].to(device)  #(device)
+            y = d['y'].to(device)  #(device)
 
             logits = model(X)
             loss = correl_loss(logits, y)
@@ -272,7 +282,7 @@ es = 30
 check_round = 5
 epochs = 100000
 target_num = Y.shape[1]
-save_model = False # If you want to save the model in the output path, set this to True.
+save_model = True  # False # If you want to save the model in the output path, set this to True.
 
 for i in feature_dict.keys():
 
@@ -284,8 +294,10 @@ for i in feature_dict.keys():
     X = pd.read_pickle(feature_path  + train_file)
     X_test = pd.read_pickle(feature_path  + test_file)
 
-    X = np.array(X)
-    X_test = np.array(X_test)
+    #X = np.array(X)
+    X = torch.tensor(X.values, dtype=torch.float32)#.to(device)
+    #X_test = np.array(X_test)
+    X_test = torch.tensor(X_test.values, dtype=torch.float32)#.to(device)
 
     test_ds = CiteDataset_test(X_test)
     test_dataloader = DataLoader(test_ds, batch_size=128, pin_memory=True,
@@ -382,4 +394,5 @@ for i in feature_dict.keys():
         model = train_loop(model, opt, train_dataloader, epoch)
 
     if save_model == True:
-        torch.save(model.state_dict(), f'{output_path}/cite_mlp_corr_{i}_flg_donor_val_{train_epochs}')
+        #torch.save(model.state_dict(), f'{output_path}/cite_mlp_corr_{i}_flg_donor_val_{train_epochs}')
+        torch.save(model.state_dict(), f'./cite_mlp_corr_{i}_flg_donor_val_{train_epochs}')
