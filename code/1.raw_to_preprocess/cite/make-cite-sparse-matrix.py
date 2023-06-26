@@ -1,14 +1,14 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -62,6 +62,8 @@ raw_path_base = '../../../input/raw/'
 raw_cite_path = '../../../input/preprocess/cite/'
 #feature_path = '../../../../summary/input/base_features/cite/'
 #feature_path = '../../../../summary/input/sample/'
+
+pd.read_hdf(raw_path_base + "train_cite_targets.h5")
 
 convert_h5_to_sparse_csr(raw_path_base + "train_cite_targets.h5", \
                          raw_cite_path + "train_cite_targets")

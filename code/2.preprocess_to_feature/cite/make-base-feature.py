@@ -1,14 +1,14 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -19,7 +19,7 @@
 import os
 import gc
 import torch
-import muon
+# import muon
 import numpy as np
 import scanpy as sc
 import pandas as pd
@@ -31,20 +31,35 @@ from sklearn.decomposition import TruncatedSVD
 
 from sklearn.preprocessing import StandardScaler
 
+import pickle
+import matplotlib.pyplot as plt
+
+
 # +
 # %%time
 
-raw_path_base = '../../../input/raw/'
-raw_path = '../../../input/preprocess/cite/'
-raw_multi_path = '../../../input/preprocess/multi/'
-feature_path = '../../../input/base_features/cite/'
+# raw_path_base = '../../../input/raw/'
+# raw_path = '../../../input/preprocess/cite/'
+# raw_multi_path = '../../../input/preprocess/multi/'
+# feature_path = '../../../input/base_features/cite/'
 #feature_path = '../../../../summary/input/sample/'
+
+lrz_path = '/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/open-problems-multimodal-3rd-solution/'
+
+raw_path_base = lrz_path + 'input/raw/'
+raw_path = lrz_path + 'input/preprocess/cite/'
+# raw_multi_path = lrz_path + 'input/preprocess/multi/'
+feature_path = lrz_path + 'input/base_features/cite/'
+
 # -
 
-df_meta = pd.read_csv(raw_path_base + 'metadata.csv')
+# df_meta = pd.read_csv(raw_path_base + 'metadata.csv')
+df_meta = pd.read_csv('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/neurips_competition_data/' + 'metadata.csv')
 
 train_inputs = scipy.sparse.load_npz(raw_path + "train_cite_raw_inputs_values.sparse.npz")
 test_inputs = scipy.sparse.load_npz(raw_path + "test_cite_raw_inputs_values.sparse.npz")
+
+train_inputs.toarray().shape
 
 # +
 train_ids = np.load(raw_path + "train_cite_raw_inputs_idxcol.npz", allow_pickle=True)
@@ -55,11 +70,11 @@ train_column = train_ids["columns"]
 test_index = test_ids["index"]
 # -
 
+len(train_index)
+
 train_num = train_inputs.shape[0]
 
 all_inputs = scipy.sparse.vstack([train_inputs, test_inputs])
-
-all_inputs
 
 # +
 # cluster
@@ -220,38 +235,61 @@ norm_cols_120 = [j for i, j in enumerate(train_column) if j not in important_col
 
 print(len(use_imp_cols_84), len(use_imp_cols_120))
 print(len(use_cols_84), len(use_cols_120))
-
-
 # -
+
+all_genes = [j for i, j in enumerate(train_column) if j not in important_cols_84]
+all_genes[:10]
+
+np.savetxt('all_genes_names.txt', all_genes, fmt='%s')
+
+len(train_column)
+
+train_column[[use_imp_cols_84[80]]]
+
+use_imp_cols_84    # indices of important cols in train_column
+
+np.savetxt('use_imp_cols_84.txt', use_imp_cols_84, fmt='%s')
+np.savetxt('use_cols_84.txt', use_cols_84, fmt='%s')
+
 
 # ### base features
 # - Compressed with svd (except for important genes)
 
+# +
 def make_train_svds(df, use_cols, use_imp_cols, svd_dims, svd_save_name, imp_save_name, imp_ratio_name, express = False):
 
+    
+    
     df_use = df[:, use_cols]
+    #print(df_use)
     df_use = sc.AnnData(X = df_use)
-
+    #print(df_use.X)
     if express == True:
         sc.pp.normalize_total(df_use, exclude_highly_expressed=True, max_fraction=0.005)
     else:
         sc.pp.normalize_per_cell(df_use)
-    sc.pp.log1p(df_use)
-
+    sc.pp.log1p(df_use.X)
+#     print(df_use)
     svd = TruncatedSVD(n_components=svd_dims, random_state=1) # 512
     result_svd = svd.fit_transform(df_use.X)
-
-    train_cite_pp = pd.DataFrame(result_svd[:train_num], index = train_ids['index'])
-    test_cite_pp = pd.DataFrame(result_svd[train_num:], index = test_ids['index'])
+    
+#     with open('svd_model_fitted.pkl', 'wb') as file:
+#         pickle.dump(svd, file)
+#     print(result_svd)
+    train_cite_pp = pd.DataFrame(result_svd[:train_num], index = train_ids['index'])   # has cell_ids
+    test_cite_pp = pd.DataFrame(result_svd[train_num:], index = test_ids['index'])     # has cell_ids
 
     if express == True:
         # Sorry for the weird naming, I was confused because I was making various features,
         # last_v4 feature is changed the normalize method.
-        train_cite_pp.to_pickle(feature_path + f'train_cite_last_svd_v4.pickle')
-        test_cite_pp.to_pickle(feature_path + f'test_cite_last_svd_v4.pickle')
+        #train_cite_pp.to_pickle(feature_path + f'train_cite_last_svd_v4.pickle')
+        #test_cite_pp.to_pickle(feature_path + f'test_cite_last_svd_v4.pickle')
+        print(1)
     else:
-        train_cite_pp.to_pickle(feature_path + f'train_{svd_save_name}.pickle')
-        test_cite_pp.to_pickle(feature_path + f'test_{svd_save_name}.pickle')
+        print(2)
+        #train_cite_pp.to_pickle(feature_path + f'train_{svd_save_name}.pickle')
+        #test_cite_pp.to_pickle(feature_path + f'test_{svd_save_name}.pickle')
+        print(f'test_{svd_save_name}')
 
     # important protein cols ---------------------------------------------------------------------
 
@@ -265,22 +303,132 @@ def make_train_svds(df, use_cols, use_imp_cols, svd_dims, svd_save_name, imp_sav
         train_imp = pd.DataFrame(df_important.X[:train_num].toarray(), index = train_ids['index']).add_prefix('imp_')
         test_imp = pd.DataFrame(df_important.X[train_num:].toarray(), index = test_ids['index']).add_prefix('imp_')
 
-        train_imp.to_pickle(feature_path + f'train_{imp_save_name}.pickle')
-        test_imp.to_pickle(feature_path + f'test_{imp_save_name}.pickle')
+        #train_imp.to_pickle(feature_path + f'train_{imp_save_name}.pickle')
+        #test_imp.to_pickle(feature_path + f'test_{imp_save_name}.pickle')
 
         # import protain surface ratio
         imp_ratio = df[:,use_imp_cols].sum(1) / df.sum(1)
         imp_ratio_df = pd.DataFrame(imp_ratio, columns = ['knn_imp_ratio_all'])
 
-        imp_ratio_df[:train_num].reset_index(drop=True).to_pickle(feature_path + f'train_imp_feature_{imp_ratio_name}.pickle')
-        imp_ratio_df[train_num:].reset_index(drop=True).to_pickle(feature_path + f'test_imp_feature_{imp_ratio_name}.pickle')
+        #imp_ratio_df[:train_num].reset_index(drop=True).to_pickle(feature_path + f'train_imp_feature_{imp_ratio_name}.pickle')
+        #imp_ratio_df[train_num:].reset_index(drop=True).to_pickle(feature_path + f'test_imp_feature_{imp_ratio_name}.pickle')
+
+# +
+#make_train_svds(all_inputs, use_cols_84, use_imp_cols_84, 128, 'svd_128_imp84', 'imp_84', 'imp84')    # for model #16
+# make_train_svds(all_inputs, use_cols_84, use_imp_cols_84, 64, 'svd_64_imp84', None, None)
+# make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 128, 'svd_128_imp120', 'imp_120','imp120')
+# make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 64, 'svd_64_imp120', None, None)
+# make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 128, 'svd_128_imp120', None, None, True)
+# -
+
+# ### svd 128 -> contributions of genes to svds
+
+pd.DataFrame(sc.AnnData(all_inputs[:, use_imp_cols_84]).X[:train_num].toarray(),index = train_ids['index'], columns=list(train_column[[use_imp_cols_84]]))
+
+# %%time
+df_use = all_inputs[:, use_cols_84]
+df_use = sc.AnnData(X = df_use)
+sc.pp.normalize_per_cell(df_use)
+sc.pp.log1p(df_use.X)
+print(df_use.X)
+
+df_use.X.shape
+
+# +
+# # %%time
+# svd = TruncatedSVD(n_components=128, random_state=1)
+# result_svd = svd.fit_transform(df_use.X)
+# print(result_svd)
+# train_cite_pp = pd.DataFrame(result_svd[:train_num], index = train_ids['index'])
+# test_cite_pp = pd.DataFrame(result_svd[train_num:], index = test_ids['index'])
+
+# +
+# with open('svd_model_128.pkl', 'wb') as file:
+#     pickle.dump(svd, file)
+
+# +
+with open('svd_model.pkl', 'rb') as file:
+    svd_loaded = pickle.load(file)
+
+print(svd_loaded.components_.shape)
+svd_loaded.components_
+# -
+
+svd_loaded.explained_variance_ratio_.sum()
+
+result_svd = svd_loaded.transform(df_use.X)
+result_svd
+
+pd.DataFrame(svd_loaded.components_)
+
+svd_loaded.components_
+
+np.sort(svd_loaded.components_[0])[::-1][:80]
+
+svd_loaded.explained_variance_ratio_   # len = 128
+
+# +
+# Create x-axis values from 0 to 127
+x = range(128)
+
+plt.plot(x, svd_loaded.explained_variance_ratio_)
 
 
-make_train_svds(all_inputs, use_cols_84, use_imp_cols_84, 128, 'svd_128_imp84', 'imp_84', 'imp84')
-make_train_svds(all_inputs, use_cols_84, use_imp_cols_84, 64, 'svd_64_imp84', None, None)
-make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 128, 'svd_128_imp120', 'imp_120','imp120')
-make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 64, 'svd_64_imp120', None, None)
-make_train_svds(all_inputs, use_cols_120, use_imp_cols_120, 128, 'svd_128_imp120', None, None, True)
+tick_locations = range(0, 128, 10)
+tick_labels = [f"svd_{i}" for i in tick_locations]
+
+plt.xticks(tick_locations, tick_labels, rotation=90)
+
+plt.xlabel("SVD Components")
+plt.ylabel("Explained Variance")
+
+plt.show()
+# -
+
+pd.DataFrame(df_use.X.toarray())
+
+result_svd = svd_loaded.transform(df_use.X)
+pd.DataFrame(result_svd)
+
+pd.DataFrame(svd_loaded.inverse_transform(result_svd))
+
+# normalize components per row:
+svd_comp_norm = svd_loaded.components_ / np.sum(svd_loaded.components_, axis=1, keepdims=True)
+svd_comp_norm
+
+svd_comp_norm[1].sum()
+
+# +
+#np.savetxt('svd_comp_norm.txt', svd_comp_norm, delimiter=',')
+# -
+
+# ### svd 64 -> contributions of genes to svds
+
+svd_64 = TruncatedSVD(n_components=64, random_state=1)
+result_svd_64 = svd_64.fit_transform(df_use.X)
+
+svd_64.components_
+
+svd_64.explained_variance_ratio_.sum()
+
+# +
+x = range(64)
+plt.plot(x, svd_64.explained_variance_ratio_)
+tick_locations = range(0, 64, 10)
+tick_labels = [f"svd_{i}" for i in tick_locations]
+
+plt.xticks(tick_locations, tick_labels, rotation=90)
+
+plt.xlabel("SVD Components")
+plt.ylabel("Explained Variance")
+
+plt.show()
+# -
+
+svd_comp_norm_64 = svd_64.components_ / np.sum(svd_64.components_, axis=1, keepdims=True)
+svd_comp_norm_64[63].sum()
+
+np.savetxt('svd_comp_norm_64.txt', svd_comp_norm_64, delimiter=',')
 
 # +
 #train_feat = pd.read_pickle(feature_path + 'train_svd_64_imp84.pickle')
@@ -573,6 +721,7 @@ gc.collect()
 # - Take the average of expression counts of important genes for each cell type
 
 df_meta_cite = df_meta[df_meta['technology'] == 'citeseq']
+df_meta_cite
 
 imp_84_df = pd.DataFrame(np.concatenate([train_inputs[:,use_imp_cols_84].toarray(), \
                                     test_inputs[:,use_imp_cols_84].toarray()]), \
@@ -580,6 +729,10 @@ imp_84_df = pd.DataFrame(np.concatenate([train_inputs[:,use_imp_cols_84].toarray
 imp_120_df = pd.DataFrame(np.concatenate([train_inputs[:,use_imp_cols_120].toarray(), \
                           test_inputs[:,use_imp_cols_120].toarray()]), \
                           columns = important_cols_120)
+
+imp_84_df
+
+train_index
 
 imp_84_df.index = list(train_index) + list(test_index)
 imp_120_df.index = list(train_index) + list(test_index)

@@ -1,14 +1,14 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -17,17 +17,36 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import lightgbm as lgb
+# import lightgbm as lgb
 
-preprocess_path = '../../../input/base_features/cite/'
+# +
+# preprocess_path = '../../../input/base_features/cite/'
 output_path = '../../../input/features/cite/'
+
+lrz_path = '/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/open-problems-multimodal-3rd-solution/'
+
+preprocess_path = lrz_path + 'input/base_features/cite/'
+# -
 
 # ### load base feature
 
+X_128 = pd.read_pickle(preprocess_path + 'train_svd_128_imp84.pickle')
+X_test_128 = pd.read_pickle(preprocess_path + 'test_svd_128_imp84.pickle')   # for model #16
+X_128 = X_128.add_prefix('base_svd_')   # adds prefix to each column name
+X_test_128 = X_test_128.add_prefix('base_svd_')
+
+X_128
+
+X_test_128
+
+X_imp = pd.read_pickle(preprocess_path + 'train_imp_84.pickle')
+X_test_imp = pd.read_pickle(preprocess_path + 'test_imp_84.pickle')      # for model #16
+X_imp
+
 # +
 X_128 = pd.read_pickle(preprocess_path + 'train_svd_128_imp84.pickle')
-X_test_128 = pd.read_pickle(preprocess_path + 'test_svd_128_imp84.pickle')
-X_128 = X_128.add_prefix('base_svd_')
+X_test_128 = pd.read_pickle(preprocess_path + 'test_svd_128_imp84.pickle')   # for model #16
+X_128 = X_128.add_prefix('base_svd_')   # adds prefix to each column name
 X_test_128 = X_test_128.add_prefix('base_svd_')
 
 X_64 = pd.read_pickle(preprocess_path + 'train_svd_64_imp84.pickle')
@@ -36,7 +55,7 @@ X_64 = X_64.add_prefix('base_svd_')
 X_test_64 = X_test_64.add_prefix('base_svd_')
 
 X_imp = pd.read_pickle(preprocess_path + 'train_imp_84.pickle')
-X_test_imp = pd.read_pickle(preprocess_path + 'test_imp_84.pickle')
+X_test_imp = pd.read_pickle(preprocess_path + 'test_imp_84.pickle')      # for model #16
 
 X_imp_norm = pd.read_pickle(preprocess_path + 'train_imp_merge_norm_84.pickle')
 X_test_imp_norm = pd.read_pickle(preprocess_path + 'test_imp_merge_norm_84.pickle')
@@ -651,18 +670,25 @@ X_test_cluster_64.to_pickle(output_path + 'X_test_cluster_64.pickle')
 
 # +
 # only svd & best
-X_svd_128 = pd.concat([X_128.reset_index(drop=True),
+X_svd_128 = pd.concat([X_128.reset_index(drop=True),       # training set for model #16
                        X_imp.reset_index(drop=True),
                       ], axis = 1)
 
-X_test_svd_128 = pd.concat([X_test_128.reset_index(drop=True),
+X_test_svd_128 = pd.concat([X_test_128.reset_index(drop=True),       # test set for model #16
                             X_test_imp.reset_index(drop=True),
                            ], axis = 1)
 
 print(X_svd_128.shape, X_test_svd_128.shape)
 
-X_svd_128.to_pickle(output_path + 'X_svd_128.pickle')
-X_test_svd_128.to_pickle(output_path + 'X_test_svd_128.pickle')
+# X_svd_128.to_pickle(output_path + 'X_svd_128.pickle')
+# X_test_svd_128.to_pickle(output_path + 'X_test_svd_128.pickle')
+# -
+
+X_test_svd_128
+
+pd.concat([X_128.reset_index(drop=False),       # training set for model #16
+                       X_imp.reset_index(drop=False),
+                      ], axis = 1)
 
 # +
 # only svd & best
