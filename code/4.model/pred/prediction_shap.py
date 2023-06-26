@@ -456,13 +456,13 @@ pd.DataFrame(pred_16)   # double check train_cite_targets.h5  -> omnipath
 
 # ### prediction with private test input -> should get private test target
 
-private_test_input = ad.read('private_test_input.h5ad')
+private_test_input = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_input.h5ad')
 private_test_input
 
-private_test_target = ad.read('private_test_target.h5ad')
+private_test_target = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target.h5ad')
 private_test_target
 
-private_test_target_raw = ad.read('private_test_target_raw.h5ad')
+private_test_target_raw = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target_raw.h5ad')
 private_test_target_raw
 
 with open('private_X_test_svd.pkl', 'rb') as f:  # private_X_test_svd
@@ -512,7 +512,7 @@ pd.DataFrame(private_test_target.X)
 
 pd.DataFrame(private_test_target_raw.X.toarray())
 
-pd.concat([pd.DataFrame(pred_16), pd.DataFrame(private_test_target.X)]).corr()
+pd.concat([pd.DataFrame(pred_16), pd.DataFrame(private_test_target.X)]).corr().head()
 
 # +
 # TODO check svd output to see if svd model is correct
