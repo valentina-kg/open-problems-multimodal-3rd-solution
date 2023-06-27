@@ -456,13 +456,13 @@ pd.DataFrame(pred_16)   # double check train_cite_targets.h5  -> omnipath
 
 # ### prediction with private test input -> should get private test target
 
-private_test_input = ad.read('private_test_input.h5ad')
+private_test_input = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_input.h5ad')
 private_test_input
 
-private_test_target = ad.read('private_test_target.h5ad')
+private_test_target = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target.h5ad')
 private_test_target
 
-private_test_target_raw = ad.read('private_test_target_raw.h5ad')
+private_test_target_raw = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target_raw.h5ad')
 private_test_target_raw
 
 with open('private_X_test_svd.pkl', 'rb') as f:  # private_X_test_svd
@@ -518,8 +518,7 @@ pd.concat([pd.DataFrame(pred_16), pd.DataFrame(private_test_target.X)]).corr().h
 # TODO check svd output to see if svd model is correct
 # -
 
-# ### - add cell_ids to train and test data
-# ### - SHAP
+# ### add cell_ids and cell_type to train and test data
 
 # +
 train_ids = np.load(index_path + "train_cite_raw_inputs_idxcol.npz", allow_pickle=True)
@@ -549,6 +548,8 @@ X_test_cell_ids = X_test_cell_ids.merge(metadata[['cell_id', 'cell_type']], on =
 X_test_cell_ids['cell_type'].value_counts()
 
 X_test_cell_ids
+
+# ### create dataset of 50 samples per cell type for SHAP beeswarm plot
 
 # +
 samples_per_cell_type = 50
@@ -619,6 +620,9 @@ for col in X_test_shap.columns:
 X_test_shap.columns = new_columns
 X_test_shap
 
+# ### prepare data for SHAP plot 
+# ### => shap.KernelExplainer, explainer.shap_values, shap.summary_plot(shap_values)
+
 # +
 # X_train for model #16: 'X_svd_128.pickle'
 X_train = pd.read_pickle(cite_feature_path  + 'X_svd_128.pickle')
@@ -660,6 +664,19 @@ shap_values = np.load('shap_values_16_50_samples.npy', allow_pickle=True).astype
 
 shap_values
 
+# +
+shap.initjs()
+shap.summary_plot(shap_values[0], xtest.drop(['cell_id', 'cell_type'], axis=1), feature_names=xtest.drop(['cell_id', 'cell_type'], axis=1).columns)
+
+# goal: get this plot as SHAP / features instead of SHAP / SVD components + features
+
+# -
+
+
+shap.initjs()
+shap.summary_plot(list(shap_values), plot_type = 'bar', feature_names = xtest.drop(['cell_id', 'cell_type'], axis=1).columns)
+# 140 classes = each regression output
+
 # ### get colourful plot showing cell types
 
 # print top 10 features plotted in beeswarm plot below
@@ -671,7 +688,7 @@ top_feature_names_shap### plot shap values per cell type similar to shap.summary
 # shap_values that are plotted in beeswarm below
 # [0,:,2] == base_svd_2; [0,:,1] == base_svd_1 etc
 second_element = shap_values[0, :, 9]
-print(second_element)
+print(second_element[:20])
 print(min(second_element))
 max(second_element)
 
@@ -690,9 +707,10 @@ shap_cell_types = pd.DataFrame({'SHAP svd_2': shap_values[0, :, 2],
                                 'SHAP svd_6': shap_values[0, :, 6], 
                                 'SHAP svd_21': shap_values[0, :, 21], 
                                 'SHAP svd_7': shap_values[0, :, 7], 
-                                'SHAP TFRC': shap_values[0, :, 210], # xtest.columns.get_loc('ENSG00000072274_TFRC')+1
+                                'SHAP TFRC': shap_values[0, :, xtest.columns.get_loc('ENSG00000072274_TFRC')+1],  # TODO check +1
                                 'Cell Type': xtest['cell_type']})
-shap_cell_types
+print(shap_cell_types.shape)
+shap_cell_types.head()
 
 
 # +
@@ -713,7 +731,7 @@ legend_ax.axis('off')
 # plot shap values:
 fig, ax = plt.subplots(figsize=(8, 10))
 
-x_limit = (-0.2, 0.5)
+x_limit = (-0.3, 0.6)
 
 # Remove y-axis ticks and labels
 ax.yaxis.set_visible(False)
@@ -741,19 +759,7 @@ fig.tight_layout(rect=[0, 0.1, 1, 1])
 legend_fig.subplots_adjust(top=0.1, bottom=0.05)
 
 plt.show()
-
-# +
-shap.initjs()
-shap.summary_plot(shap_values[0], xtest.drop(['cell_id', 'cell_type'], axis=1), feature_names=xtest.drop(['cell_id', 'cell_type'], axis=1).columns)
-
-# goal: get this plot as SHAP / features instead of SHAP / SVD components + features
-
 # -
-
-
-shap.initjs()
-shap.summary_plot(list(shap_values), plot_type = 'bar', feature_names = xtest.drop(['cell_id', 'cell_type'], axis=1).columns)
-# 140 classes = each regression output
 
 # ### svd contributions:
 
@@ -764,6 +770,9 @@ pd.DataFrame(svd_comp_norm)
 svd_comp_norm[2]         # => contribution x_2 = -0.00001809 * geneA - 0.00000149 * geneB + 0.0000030917 * geneC + ... + 0.0001264 geneX + 0.00026577 geneY + 0.000175 geneZ
 
 pd.DataFrame(shap_values[0])
+
+# ### propagate shap values back through svd to get original genes -> store in attr_all_22085_genes
+# #### currently only first class (shap_values[0]) -> TODO consider all 140 classes
 
 # +
 # multiply SHAP(svd_n)*contribution of gene A to component n -> sum
@@ -776,15 +785,17 @@ pd.DataFrame(shap_values[0])
 # contribution of gene A to component n: svd_comp_norm
 # SHAP(svd_n) for the 128 svd (=first 128 columns)
 
-attr_genes_only = np.zeros((len(xtest), 22001))  # Initialize the output array, 350x22001
 
-for cell in range(len(xtest)):
-    for gene in range(22001):
-        attr_gene = 0
-        for svd in range(128):
-            attr_gene += shap_values[0][cell][svd] * svd_comp_norm[svd][gene]   # this is for one cell -> loop over all cells
-        attr_genes_only[cell][gene] = attr_gene
-attr_genes_only
+# TODO delete below, should be represented in next cell
+# attr_genes_only = np.zeros((len(xtest), 22001))  # Initialize the output array, 350x22001
+
+# for cell in range(len(xtest)):
+#     for gene in range(22001):
+#         attr_gene = 0
+#         for svd in range(128):
+#             attr_gene += shap_values[0][cell][svd] * svd_comp_norm[svd][gene]   # this is for one cell -> loop over all cells
+#         attr_genes_only[cell][gene] = attr_gene
+# attr_genes_only
 
 # +
 # add third dimension -> 140x350x22001
@@ -802,10 +813,12 @@ attr_genes_only[0]
 all_genes = np.loadtxt('/dss/dsshome1/02/di93zoj/valentina/open-problems-multimodal-3rd-solution/code/2.preprocess_to_feature/cite/all_genes_names.txt', dtype=str)
 all_genes   # len 22001   (excl. the 84 other genes)   -> need list(all_genes) + gene_ids
 
-attr_all_22085_genes = np.hstack((attr_genes_only[0], shap_values[0][:,-84:]))
-pd.DataFrame(attr_all_22085_genes, columns=list(all_genes)+gene_ids)
+attr_all_22085_genes = np.hstack((attr_genes_only[0], shap_values[0][:,-84:]))    # first 22001 genes are backpropagated through svd, the other 84 genes are handselected and are considered separately
+print(pd.DataFrame(attr_all_22085_genes, columns=list(all_genes)+gene_ids).shape)
+pd.DataFrame(attr_all_22085_genes, columns=list(all_genes)+gene_ids).head()
 
 # +
+# organize indices, use same sample cells as above
 test_inputs = scipy.sparse.load_npz(index_path + "test_cite_raw_inputs_values.sparse.npz")
 test_inputs = pd.DataFrame(test_inputs.toarray(), columns=list(all_genes)+gene_ids)
 
@@ -821,21 +834,92 @@ test_inputs
 
 # cell ids used in xtest and SHAP:
 sample_cells = np.array(xtest['cell_id'])
-sample_cells
+sample_cells[:20]
 
 xtest_all_genes = test_inputs.loc[sample_cells]
-xtest_all_genes
+print(xtest_all_genes.shape)
+xtest_all_genes.head()
 
 shap.initjs()
 shap.summary_plot(attr_all_22085_genes, xtest_all_genes, feature_names=xtest_all_genes.columns)
 
+# ### get colourful plot showing cell types
+
+# print top 10 features plotted in beeswarm plot below
+attr_sum = np.abs(attr_all_22085_genes).sum(axis=0)
+top_features_indices = np.argsort(attr_sum)[::-1][:10]  # Get the indices of the top 10 features
+top_feature_names_shap = xtest_all_genes.columns[top_features_indices]
+top_feature_names_shap### plot shap values per cell type similar to shap.summary_plot(shap_values[0], xtest)
+
+# sanity check for attribution of TFRC -> compare min/max to shap beeswarm plotted above
+tfrc_attr = attr_all_22085_genes[:, xtest_all_genes.columns.get_loc('ENSG00000072274_TFRC')]
+print(tfrc_attr[:20])
+print(min(tfrc_attr))
+max(tfrc_attr)
+
+dict_top_10 = {}
+for gene in top_feature_names_shap:
+    dict_top_10[gene] = attr_all_22085_genes[:, xtest_all_genes.columns.get_loc(gene)]
+dict_top_10['Cell Type'] = xtest['cell_type']
+shap_cell_types = pd.DataFrame(dict_top_10)
+print(shap_cell_types.shape)
+shap_cell_types.head()
+
+# +
+# Assign different colors to each class
+colors = {'BP': 'red', 'EryP': 'blue', 'HSC': 'green', 'MasP': 'orange', 'MkP': 'purple', 'MoP': 'yellow', 'NeuP': 'pink'}
+
+## legend ##
+legend_fig, legend_ax = plt.subplots(figsize=(2, 2))
+
+for class_label, color in colors.items():
+    legend_ax.scatter([], [], color=color, label=f'Cell type {class_label}')
+
+legend_ax.legend(loc='center', bbox_to_anchor=(0.5, 1.2), ncol=len(colors), frameon=False)
+legend_ax.axis('off')
+## legend ##
+
+
+# plot shap values:
+fig, ax = plt.subplots(figsize=(8, 10))
+
+x_limit = (-0.2, 0.2)
+
+# Remove y-axis ticks and labels
+ax.yaxis.set_visible(False)
+
+# Iterate over the columns in shap_cell_types to create subplots
+for i, column in enumerate(shap_cell_types.columns[:-1], start=1):
+
+    ax = fig.add_subplot(len(shap_cell_types.columns)-1, 1, i)
+
+    # Set the x-axis limits and label
+    ax.set_xlim(x_limit)
+    ax.set_xlabel(column)
+
+    ax.yaxis.set_visible(False)
+
+    # Plot the dots for the current column
+    for index, row in shap_cell_types.iterrows():
+        shap_value = row[column]
+        class_label = row['Cell Type']
+        color = colors[class_label]
+        ax.plot(shap_value, 0, marker='o', color=color)    # , markersize=2)
+
+        
+fig.tight_layout(rect=[0, 0.1, 1, 1]) 
+legend_fig.subplots_adjust(top=0.1, bottom=0.05)
+
+plt.show()
+# -
+
 # top 20 genes:
 shap_sum = np.abs(attr_all_22085_genes).sum(axis=0)
 top_features_indices = np.argsort(shap_sum)[::-1][:20]  # Get the indices of the top 20 features
-top_feature_names_shap = xtest_all_genes.columns[top_features_indices]
-top_feature_names_shap
+top_20_feature_names_shap = xtest_all_genes.columns[top_features_indices]
+top_20_feature_names_shap
 
-for gene in top_feature_names_shap:
+for gene in top_20_feature_names_shap:
     if gene in list(all_genes):
         print(gene, 'among 22001 genes.')
     if gene in gene_ids:
@@ -880,15 +964,22 @@ print("Distribution of absolute values of mean attributions per handselected gen
 for value, count in zip(distribution_handselected[1], distribution_handselected[0]):
     print("Range: {:.5f} - {:.5f}, Count: {}".format(value, value + distribution_handselected[1][1], count))
 
-# get genes with count 1 (top attributing genes)
+# get top attributing genes
 genes_higher_attr_handselected_idx = np.where(abs_mean_attributions_handselected >= 0.00386)[0]
 print(genes_higher_attr_handselected_idx)
 genes_higher_attr_handselected = [gene_ids[idx] for idx in genes_higher_attr_handselected_idx]
 genes_higher_attr_handselected
 # -
 
-print(abs_mean_attributions_handselected.tolist().index(0))
-gene_ids[14]
+try:
+    index_attr_0 = abs_mean_attributions_handselected.tolist().index(0)
+    print(index_attr_0)    
+    print('Gene with mean attribution 0: ', gene_ids[index_attr_0])
+except:
+    print('There is no gene with mean attribution 0.')
+
+# #### analyze sorted abs. mean attribution for handselected and other genes
+# #### => values above/to the right of the elbow represent genes with the higher mean attributions
 
 # +
 values = np.sort(abs_mean_attributions_handselected)
@@ -916,20 +1007,19 @@ plt.show()
 # TODO plot these in one plot: seaborn scatterplot hue
 
 # +
-# get abs_mean_attribution == 0
-#print(np.sort(abs_mean_attributions_handselected))
-#print(np.sort(abs_mean_attributions_others)[:500])
+# check if the genes with higher mean attribution are among the top 20 features shown in shap plot
 
-# +
-for i in genes_higher_attr_others:
-    print(i in top_feature_names_shap)
-
+print('Handselected genes:')
 for i in genes_higher_attr_handselected:
-    print(i in top_feature_names_shap)
+    print(i, i in top_20_feature_names_shap)  # CD9 and SPINK2 are not among top 20
+    
+print('Other genes:')
+for i in genes_higher_attr_others:
+    print(i, i in top_20_feature_names_shap)  # these are all True => all among top 20
 
 
 # +
-# TODO add label of gini index per plot
+# compute gini index of mean attributions and include in plot below
 def gini(arr):    # range from 0 (total equality) to 1 (absolute inequality)
     ## first sort
     sorted_arr = arr.copy()
@@ -1034,471 +1124,3 @@ for i in top_features_svd:
         print(i, 'among other genes with highest attributions')
     else:
         print(i)
-
-# +
-# 50 per cell type (after test run below) 1
-# private_test_target & private_test_input 0
-# feed test set to shap instead of 35 samples -> sample x pr cell type from test set
-# target test set: double check predictions above
-
-# +
-# scanpy clustering 3
-# 140 35 212
-# per cell type avg across 35 rows -> 140x212 matrix
-# -> cluster 140 rows -> 
-# clusters of proteins with similar attributions
-# -
-
-# ### shap model #16 for private test data
-
-model
-
-# +
-#X_train_p = pickle.load(open('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/kaggle/full_data/20220830_citeseq_rna_count_train.pkl', 'rb'))
-#X_train_p = np.array(X_train_p)
-
-X_test_p = ad.read_h5ad('private_test_input_sample.h5ad')
-
-# print('X_train: ', X_train_p.shape)
-print('X_test: ', X_test_p.X.shape)
-
-## explainer = shap.KernelExplainer(model, shap.sample(X_train_p, 1000))
-## explainer  # use same explainer trained above (?)
-
-# shap_values = explainer.shap_values(X_test_p.X, nsamples=300)
-
-# +
-# np.save('shap_values_16_p.npy', np.array(shap_values, dtype=object), allow_pickle=True)
-# -
-
-shap_values = np.load('shap_values_16_p.npy', allow_pickle=True).astype('float')
-
-X_test_p.var_names = new_columns[1:213]   # new_column already implemented for shap plots above
-
-shap.initjs()
-shap.summary_plot(shap_values[0], X_test_p.X, feature_names=X_test_p.var_names)
-
-
-stop
-
-# ## Multi
-
-mlp_model_name = [
-    'multi_mlp_all_con_16',
-    'multi_mlp_all_con_32', 
-    'multi_mlp_all_binary_16',
-    'multi_mlp_all_last_cluster',
-    'multi_mlp_all_lsi_w2v_col_128_flg',
-    'multi_mlp_all_lsi_w2v_128_flg',
-    'multi_mlp_all_lsi_128_flg',
-    'multi_mlp_all_lsi_w2v_col_64_flg',
-    'multi_mlp_all_lsi_w2v_64_flg',
-    'multi_mlp_all_lsi_64_flg',
-    'multi_mlp_all_okapi_128_flg',
-    'multi_mlp_all_okapi_64_flg',
-    'multi_mlp_all_colmean_64_flg',
-    'multi_mlp_corr_con_16_flg',
-    'multi_mlp_corr_con_32_flg',
-    'multi_mlp_corr_binary_16',
-    'multi_mlp_corr_lsi_add_lc_svd_flg',
-    
-    'multi_mlp_corr_lsi_w2v_col_128_flg',
-    'multi_mlp_corr_lsi_w2v_col_64_flg',
-    'multi_mlp_corr_lsi_w2v_128_flg',
-    'multi_mlp_corr_lsi_w2v_64_flg',
-    
-    'multi_mlp_corr_lsi_128_flg',
-    'multi_mlp_corr_lsi_64_flg',
-    
-    'multi_mlp_corr_colmean_64_flg',
-    'multi_mlp_corr_okapi_w2v_64_flg',
-    'multi_mlp_corr_okapi_64_flg',
-    
-             ]
-
-# +
-model_name_list = []
-
-for i in mlp_model_name:
-    for num, j in enumerate(os.listdir(multi_mlp_path)):
-        if i in j:
-            model_name_list.append(j)
-
-print(len(model_name_list))
-model_name_list
-
-# +
-weight = [2.5, 2.5, 2.5, 1.2, 1.2, 1.2, 1, 
-          1.5, 1.5, 2.5, 0.5, 0.5, 0.5, 
-          2.5, 2.5, 1.8, 0.8, 1, 0.8, 1 ,0.8, 1, 0.3, 
-          0.3, 0.3, 0.3, 0.2, 0.2, 0.2]
-weight_sum = np.array(weight).sum()
-weight_sum
-
-model_feat_dict = {model_name_list[0]:['multi_test_con_16.pickle', 2.5],
-                   model_name_list[1]:['multi_test_con_32.pickle', 2.5],
-                   model_name_list[2]:['multi_test_binary_16.pickle', 2.5],
-                   
-                   model_name_list[3]:['multi_test_okapi_64_last_cluster.pickle', 1.2],
-                   model_name_list[4]:['multi_test_lsi_w2v_col_128.pickle', 1.2],
-                   model_name_list[5]:['multi_test_lsi_w2v_128.pickle', 1.2],
-                   model_name_list[6]:['multi_test_okapi_lsi_128.pickle', 1],
-                   
-                   model_name_list[7]:['multi_test_lsi_w2v_col_64.pickle', 1.5],
-                   model_name_list[8]:['multi_test_lsi_w2v_64.pickle', 1.5],
-                   model_name_list[9]:['multi_test_okapi_lsi_64.pickle', 2.5],
-                   
-                   model_name_list[10]:['multi_test_okapi_feature_128.pickle', 0.5],
-                   model_name_list[11]:['multi_test_okapi_feature_64.pickle', 0.5],
-                   model_name_list[12]:['multi_test_okapi_w2v_col_64.pickle', 0.5],
-                   
-                   model_name_list[13]:['multi_test_con_16.pickle', 2.5],
-                   model_name_list[14]:['multi_test_con_32.pickle', 2.5],
-                   model_name_list[15]:['multi_test_binary_16.pickle', 1.8],
-                   model_name_list[16]:['multi_test_lc_addsvd_64.pickle', 0.8],
-                   
-                   model_name_list[17]:['multi_test_lsi_w2v_col_128.pickle', 1],
-                   model_name_list[18]:['multi_test_lsi_w2v_col_64.pickle', 0.8],
-                   model_name_list[19]:['multi_test_lsi_w2v_128.pickle', 1],
-                   model_name_list[20]:['multi_test_lsi_w2v_64.pickle', 0.8],
-                   model_name_list[21]:['multi_test_okapi_lsi_128.pickle', 1],
-                   model_name_list[22]:['multi_test_okapi_lsi_64.pickle', 0.3],
-                   
-                   model_name_list[23]:['multi_test_okapi_w2v_col_64.pickle', 0.3],
-                   model_name_list[24]:['multi_test_okapi_w2v_64.pickle', 0.3],
-                   model_name_list[25]:['multi_test_okapi_feature_64.pickle', 0.3],
-                   
-                   'lsi_128':['multi_test_okapi_lsi_128.pickle', 0.2],
-                   'lsi_64':['multi_test_okapi_lsi_64.pickle', 0.2],
-                   'lsi_w2v_col_64':['multi_test_lsi_w2v_col_64.pickle', 0.2],
-                  }
-
-# -
-
-# ### multi model
-
-class MultiDataset(Dataset):
-    
-    def __init__(self, feature, target):
-        
-        self.feature = feature
-        self.target = target
-        
-    def __len__(self):
-        return len(self.feature)
-    
-    def __getitem__(self, index):
-                
-        d = {
-            "X": self.feature[index],
-            "y" : self.target[index],
-        }
-        return d
-
-
-class MultiDataset_test(Dataset):
-    
-    def __init__(self, feature):
-        self.feature = feature
-        
-    def __len__(self):
-        return len(self.feature)
-    
-    def __getitem__(self, index):
-                
-        d = {
-            "X": self.feature[index]
-        }
-        return d
-
-
-# +
-def partial_correlation_score_torch_faster(y_true, y_pred):
-    """Compute the correlation between each rows of the y_true and y_pred tensors.
-    Compatible with backpropagation.
-    """
-    y_true_centered = y_true - torch.mean(y_true, dim=1)[:,None]
-    y_pred_centered = y_pred - torch.mean(y_pred, dim=1)[:,None]
-    cov_tp = torch.sum(y_true_centered*y_pred_centered, dim=1)/(y_true.shape[1]-1)
-    var_t = torch.sum(y_true_centered**2, dim=1)/(y_true.shape[1]-1)
-    var_p = torch.sum(y_pred_centered**2, dim=1)/(y_true.shape[1]-1)
-    return cov_tp/torch.sqrt(var_t*var_p)
-
-def correl_loss(pred, tgt):
-    """Loss for directly optimizing the correlation.
-    """
-    return -torch.mean(partial_correlation_score_torch_faster(tgt, pred))
-
-
-def correlation_score(y_true, y_pred):
-    """Scores the predictions according to the competition rules. 
-    
-    It is assumed that the predictions are not constant.
-    
-    Returns the average of each sample's Pearson correlation coefficient"""
-    if type(y_true) == pd.DataFrame: y_true = y_true.values
-    if type(y_pred) == pd.DataFrame: y_pred = y_pred.values
-    if y_true.shape != y_pred.shape: raise ValueError("Shapes are different.")
-    corrsum = 0
-    for i in range(len(y_true)):
-        corrsum += np.corrcoef(y_true[i], y_pred[i])[1, 0]
-    return corrsum / len(y_true)
-
-
-# -
-
-class MultiModel(nn.Module):
-    
-    def __init__(self, feature_num):
-        super(MultiModel, self).__init__()
-        
-        self.layer_seq_128 = nn.Sequential(nn.Linear(feature_num, 128),
-                                           nn.LayerNorm(128),
-                                           nn.ReLU(),
-                                      )
-        
-        self.layer_seq_64 = nn.Sequential(nn.Linear(128, 64),
-                                           nn.LayerNorm(64),
-                                           nn.ReLU(),
-                                      )
-        
-        self.layer_seq_32 = nn.Sequential(nn.Linear(64, 32),
-                                   nn.LayerNorm(32),
-                                   nn.ReLU(),
-                              )
-        
-        self.layer_seq_8 = nn.Sequential(nn.Linear(32, 8),
-                                         nn.LayerNorm(8),
-                                         nn.ReLU(),
-                                      )
-        
-        self.head = nn.Linear(128 + 64 + 32 + 8, target_num)
-                   
-    def forward(self, X, y=None):
-        
-        X_128 = self.layer_seq_128(X)
-        X_64 = self.layer_seq_64(X_128)
-        X_32 = self.layer_seq_32(X_64)
-        X_8 = self.layer_seq_8(X_32)
-        X = torch.cat([X_128, X_64, X_32, X_8], axis = 1)
-        out = self.head(X)
-        
-        return out
-
-
-def train_loop(model, optimizer, loader, epoch):
-    
-    losses, lrs = [], []
-    model.train()
-    optimizer.zero_grad()
-    loss_fn = nn.MSELoss()
-    
-    with tqdm(total=len(loader),unit="batch") as pbar:
-        pbar.set_description(f"Epoch{epoch}")
-        
-        for d in loader:
-            X = d['X'].to(device).float()
-            y = d['y'].to(device)
-            
-            logits = model(X)
-            #loss = correl_loss(logits, y)
-            loss = torch.sqrt(loss_fn(logits, y))
-        
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            
-            pbar.set_postfix({"loss":loss.item()})
-            pbar.update(1)
-
-    return model
-
-
-def valid_loop(model, loader, y_val):
-    
-    model.eval()
-    partial_correlation_scores = []
-    oof_pred = []
-    loss_fn = nn.MSELoss()
-    
-    for d in loader:
-        with torch.no_grad():
-            val_X = d['X'].to(device).float()
-            val_y = d['y'].to(device)
-            logits = model(val_X)
-            #oof_pred.append(logits.detach().cpu().numpy())
-            oof_pred.append(logits)
-    
-    y_val = torch.tensor(y_val).to(device)
-    logits = torch.cat(oof_pred)
-    #print(logits.shape, y_val.shape)
-    loss = torch.sqrt(loss_fn(logits, y_val))
-    logits = logits.detach().cpu().numpy()
-    
-    return logits, loss
-
-
-def test_loop(model, loader):
-    
-    model.eval()
-    predicts=[]
-
-    for d in tqdm(loader):
-        with torch.no_grad():
-            X = d['X'].to(device).float()
-            logits = model(X)
-            predicts.append(logits.detach().cpu().numpy())
-            
-    return np.concatenate(predicts)
-
-
-# +
-pred = np.zeros([55935, 23418])
-svd = pickle.load(open(multi_target_path + 'multi_all_target_128.pkl', 'rb'))
-
-for num, i in enumerate(model_feat_dict.keys()):
-    
-    print(i)
-    
-    if 'mlp' in i:
-        
-        test_file = model_feat_dict[i][0]
-        test_weight = model_feat_dict[i][1]
-        X_test = pd.read_pickle(multi_feature_path  + test_file)    
-        X_test = np.array(X_test)
-        feature_dims = X_test.shape[1]
-
-        test_ds = MultiDataset_test(X_test)
-        test_dataloader = DataLoader(test_ds, batch_size=128, pin_memory=True, 
-                                     shuffle=False, drop_last=False, num_workers=4)
-        
-        if 'all' in i:
-            target_num = 23418
-        else:
-            target_num = 128
-        
-        model = MultiModel(feature_dims)    
-        model = model.to(device)
-        model.load_state_dict(torch.load(f'{multi_mlp_path}/{i}'))
-        
-        result = test_loop(model, test_dataloader).astype(np.float32)
-        
-        if 'all' not in i:
-            result = result@svd.components_
-                
-        result = result * test_weight / weight_sum
-        pred += result
-
-        torch.cuda.empty_cache()
-        
-    else:
-        test_file = model_feat_dict[i][0]
-        test_weight = model_feat_dict[i][1]
-        X_test = pd.read_pickle(multi_feature_path  + test_file)
-        
-        cb_pred = np.zeros([55935, 128])
-        
-        for t in tqdm(range(128)): 
-            cb_model_path = [j for j in os.listdir(multi_cb_path) if f'cb_{t}_{i}' in j][0]
-            cb = pickle.load(open(multi_cb_path + cb_model_path, 'rb'))
-            cb_pred[:,t] = cb.predict(X_test)
-            
-        cb_pred = cb_pred.astype(np.float32)
-        cb_pred = cb_pred@svd.components_
-        pred += cb_pred * test_weight / weight_sum
-        
-        #del cb_pred
-# -
-
-multi_sub = pd.DataFrame(pred.round(6)).astype(np.float32)
-
-del pred
-gc.collect()
-
-# ## Postprocess
-
-preprocess_path = '../../../../summary/input/preprocess/'
-
-# #### first: fix cite output
-
-test_sub_ids = np.load(preprocess_path + "cite/test_cite_inputs_idxcol.npz", allow_pickle=True)
-test_sub_ids = test_sub_ids["index"]
-test_raw_ids = np.load(preprocess_path + "cite/test_cite_raw_inputs_idxcol.npz", allow_pickle=True)
-test_raw_ids = test_raw_ids["index"]
-
-# +
-test_cite_df = pd.DataFrame(test_sub_ids, columns = ['cell_id'])
-cite_sub['cell_id'] = test_raw_ids
-test_cite_df = test_cite_df.merge(cite_sub, on = 'cell_id', how = 'left')
-test_cite_df.fillna(0, inplace = True)
-test_cite_df.drop(['cell_id'], axis = 1, inplace = True)
-
-cite_sub = test_cite_df.copy()
-# -
-
-# ### preprocess
-
-# +
-sub = pd.read_csv(raw_path + "sample_submission.csv")  
-eval_ids = pd.read_csv(raw_path + "evaluation_ids.csv") 
-
-cite_cols = pd.read_csv(preprocess_path + "cite/cite_test_cols.csv") 
-cite_index = pd.read_csv(preprocess_path + "cite/cite_test_indexs.csv") 
-cite_index.columns = ['cell_id']
-
-multi_cols = pd.read_csv(preprocess_path + "multi/multi_test_cols.csv") 
-multi_index = pd.read_csv(preprocess_path + "multi/multi_test_indexs.csv") 
-multi_index.columns = ['cell_id']
-
-submission = pd.Series(name='target',index=pd.MultiIndex.from_frame(eval_ids), dtype=np.float32)
-# -
-
-# ### multi
-
-multi_sub = np.array(multi_sub)
-
-# +
-cell_dict = dict((k,v) for v,k in enumerate(np.array(multi_index['cell_id'])))
-assert len(cell_dict)  == len(multi_index['cell_id'])
-
-gene_dict = dict((k,v) for v,k in enumerate(np.array(multi_cols['gene_id']))) 
-assert len(gene_dict)  == len(multi_cols['gene_id'])
-
-eval_ids_cell_num = eval_ids.cell_id.apply(lambda x:cell_dict.get(x, -1))
-eval_ids_gene_num = eval_ids.gene_id.apply(lambda x:gene_dict.get(x, -1))
-
-valid_multi_rows = (eval_ids_gene_num !=-1) & (eval_ids_cell_num!=-1)
-submission.iloc[valid_multi_rows] = multi_sub[eval_ids_cell_num[valid_multi_rows].to_numpy(),
-                                                 eval_ids_gene_num[valid_multi_rows].to_numpy()]
-# -
-
-# ### cite
-
-cite_sub = np.array(cite_sub)
-
-# +
-cell_dict = dict((k,v) for v,k in enumerate(np.array(cite_index['cell_id'])))
-assert len(cell_dict)  == len(cite_index['cell_id'])
-
-gene_dict = dict((k,v) for v,k in enumerate(np.array(cite_cols['gene_id']))) 
-assert len(gene_dict)  == len(cite_cols['gene_id'])
-
-eval_ids_cell_num = eval_ids.cell_id.apply(lambda x:cell_dict.get(x, -1))
-eval_ids_gene_num = eval_ids.gene_id.apply(lambda x:gene_dict.get(x, -1))
-
-valid_multi_rows = (eval_ids_gene_num !=-1) & (eval_ids_cell_num!=-1)
-# -
-
-submission.iloc[valid_multi_rows] = cite_sub[eval_ids_cell_num[valid_multi_rows].to_numpy(),
-                                                 eval_ids_gene_num[valid_multi_rows].to_numpy()]
-
-# ### make submission
-
-submission = submission.round(6)
-submission = pd.DataFrame(submission, columns = ['target'])
-submission = submission.reset_index()
-
-submission[['row_id', 'target']].to_csv(output_path + 'submission.csv', index = False)
-
-# +
-# #!kaggle competitions submit -c open-problems-multimodal -f $sub_name_csv -m $message
