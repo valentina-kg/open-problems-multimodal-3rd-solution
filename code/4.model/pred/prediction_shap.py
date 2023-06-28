@@ -484,7 +484,7 @@ i = 'cite_mlp_corr_svd_128_flg_donor_val_30'
         
 # test_file = model_feat_dict[i][0]
 # test_weight = model_feat_dict[i][1]
-X_test = private_X_test_svd_from_raw
+X_test = private_X_test_svd
 X_test = np.array(X_test)
 feature_dims = X_test.shape[1]
 
@@ -686,12 +686,14 @@ shap_cell_types = pd.DataFrame({'SHAP svd_2': shap_values[0, :, 2],
                                 'SHAP svd_7': shap_values[0, :, 7], 
                                 'SHAP svd_4': shap_values[0, :, 4], 
                                 'SHAP svd_6': shap_values[0, :, 6], 
-                                'SHAP CD36': shap_values[0, :, xtest.columns.get_loc('ENSG00000135218_CD36')+1], # check +1
+                                'SHAP CD36': shap_values[0, :, xtest.columns.get_loc('ENSG00000135218_CD36')], # check +1
                                 'SHAP svd_21': shap_values[0, :, 21], 
                                 'Cell Type': xtest['cell_type']})
 print(shap_cell_types.shape)
 shap_cell_types.head()
 
+
+xtest
 
 # +
 # Assign different colors to each class
