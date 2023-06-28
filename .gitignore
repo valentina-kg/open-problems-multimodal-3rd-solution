@@ -132,10 +132,10 @@ dmypy.json
 *.pdf
 
 # add:model files
-*.pkl
+# *.pkl
 *.h5
 *.npz
-model/cite/mlp/cite_mlp_corr_*
+# model/cite/mlp/cite_mlp_corr_*
 model/multi/mlp/multi_mlp_corr_*
 model/multi/mlp/multi_mlp_all_*
 dataset-metadata.json
