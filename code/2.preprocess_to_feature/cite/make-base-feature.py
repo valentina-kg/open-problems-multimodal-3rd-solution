@@ -255,7 +255,6 @@ np.savetxt('use_cols_84.txt', use_cols_84, fmt='%s')
 # ### base features
 # - Compressed with svd (except for important genes)
 
-# +
 def make_train_svds(df, use_cols, use_imp_cols, svd_dims, svd_save_name, imp_save_name, imp_ratio_name, express = False):
 
     
@@ -273,8 +272,8 @@ def make_train_svds(df, use_cols, use_imp_cols, svd_dims, svd_save_name, imp_sav
     svd = TruncatedSVD(n_components=svd_dims, random_state=1) # 512
     result_svd = svd.fit_transform(df_use.X)
     
-#     with open('svd_model_fitted.pkl', 'wb') as file:
-#         pickle.dump(svd, file)
+    with open('svd_model_fitted_128.pkl', 'wb') as file:
+        pickle.dump(svd, file)
 #     print(result_svd)
     train_cite_pp = pd.DataFrame(result_svd[:train_num], index = train_ids['index'])   # has cell_ids
     test_cite_pp = pd.DataFrame(result_svd[train_num:], index = test_ids['index'])     # has cell_ids
@@ -334,6 +333,12 @@ print(df_use.X)
 
 df_use.X.shape
 
+# #### double check svd fit_transform and transform of a saved/loaded svd return the same result
+
+svd = TruncatedSVD(n_components=128, random_state=1)
+fit_transf_all = svd.fit_transform(df_use.X)
+fit_transf_all
+
 # +
 # # %%time
 # svd = TruncatedSVD(n_components=128, random_state=1)
@@ -341,23 +346,27 @@ df_use.X.shape
 # print(result_svd)
 # train_cite_pp = pd.DataFrame(result_svd[:train_num], index = train_ids['index'])
 # test_cite_pp = pd.DataFrame(result_svd[train_num:], index = test_ids['index'])
-
-# +
-# with open('svd_model_128.pkl', 'wb') as file:
-#     pickle.dump(svd, file)
-
-# +
-with open('svd_model.pkl', 'rb') as file:
-    svd_loaded = pickle.load(file)
-
-print(svd_loaded.components_.shape)
-svd_loaded.components_
 # -
 
-svd_loaded.explained_variance_ratio_.sum()
+with open('svd_model_fitted_128.pkl', 'rb') as file:
+    svd_loaded = pickle.load(file)
 
 result_svd = svd_loaded.transform(df_use.X)
 result_svd
+
+only_transf_all = svd.transform(df_use.X)
+only_transf_all
+
+print(np.unique(fit_transf_all == only_transf_all))     # True
+print(np.unique(fit_transf_all == result_svd))          # True
+np.max(fit_transf_all - result_svd)
+
+# #### analyze svd components and explained variance
+
+print(svd_loaded.components_.shape)
+svd_loaded.components_
+
+svd_loaded.explained_variance_ratio_.sum()
 
 pd.DataFrame(svd_loaded.components_)
 
@@ -390,9 +399,9 @@ pd.DataFrame(df_use.X.toarray())
 result_svd = svd_loaded.transform(df_use.X)
 pd.DataFrame(result_svd)
 
-pd.DataFrame(svd_loaded.inverse_transform(result_svd))
+pd.DataFrame(svd_loaded.inverse_transform(result_svd))    # inverse_transform only approximates original data
 
-# normalize components per row:
+# normalize svd components to sum to 1 per row
 svd_comp_norm = svd_loaded.components_ / np.sum(svd_loaded.components_, axis=1, keepdims=True)
 svd_comp_norm
 
@@ -406,6 +415,8 @@ svd_comp_norm[1].sum()
 
 svd_64 = TruncatedSVD(n_components=64, random_state=1)
 result_svd_64 = svd_64.fit_transform(df_use.X)
+with open('svd_model_fitted_64.pkl', 'wb') as file:
+        pickle.dump(svd_64, file)
 
 svd_64.components_
 
@@ -425,10 +436,13 @@ plt.ylabel("Explained Variance")
 plt.show()
 # -
 
+# normalize svd components to sum to 1 per row
 svd_comp_norm_64 = svd_64.components_ / np.sum(svd_64.components_, axis=1, keepdims=True)
 svd_comp_norm_64[63].sum()
 
 np.savetxt('svd_comp_norm_64.txt', svd_comp_norm_64, delimiter=',')
+
+stop
 
 # +
 #train_feat = pd.read_pickle(feature_path + 'train_svd_64_imp84.pickle')
