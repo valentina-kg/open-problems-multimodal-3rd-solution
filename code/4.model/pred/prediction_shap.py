@@ -50,7 +50,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 
-device = torch.device("cuda")
+device = torch.device("cuda") if torch.cuda.is_available() else 'cpu'
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 # -
@@ -84,6 +84,12 @@ output_path = lrz_path + 'output/'   # '../../../output/'
 # +
 # get model name
 #mlp_model_path = os.listdir(cite_mlp_path)
+# -
+
+# markdown
+
+# +
+# check model names and lists/dict/...
 # -
 
 mlp_model_name = [
@@ -429,7 +435,7 @@ pred_16 = np.zeros([48203, 140])
 i = 'cite_mlp_corr_svd_128_flg_donor_val_30'
         
 test_file = model_feat_dict[i][0]
-test_weight = model_feat_dict[i][1]
+# test_weight = model_feat_dict[i][1]
 X_test = pd.read_pickle(cite_feature_path  + test_file)
 X_test = np.array(X_test)
 feature_dims = X_test.shape[1]
@@ -452,70 +458,6 @@ pred_16 += result
 torch.cuda.empty_cache()
         
 pd.DataFrame(pred_16)   # double check train_cite_targets.h5  -> omnipath
-# -
-
-# ### prediction with private test input -> should get private test target
-
-private_test_input = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_input.h5ad')
-private_test_input
-
-private_test_target = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target.h5ad')
-private_test_target
-
-private_test_target_raw = ad.read('/dss/dssfs02/lwp-dss-0001/pn36po/pn36po-dss-0001/di93zoj/large_preprocessed_files/private_test_target_raw.h5ad')
-private_test_target_raw
-
-with open('private_X_test_svd.pkl', 'rb') as f:  # private_X_test_svd
-
-    private_X_test_svd = pickle.load(f)
-private_X_test_svd.shape
-
-
-with open('private_X_test_svd_from_raw.pkl', 'rb') as f:  # private_X_test_svd
-
-    private_X_test_svd_from_raw = pickle.load(f)
-private_X_test_svd_from_raw.shape
-
-# +
-# model #16: cite_mlp_corr_svd_128_flg_donor_val_30
-pred_16 = np.zeros([26867, 140])
-
-i = 'cite_mlp_corr_svd_128_flg_donor_val_30'
-        
-# test_file = model_feat_dict[i][0]
-# test_weight = model_feat_dict[i][1]
-X_test = private_X_test_svd
-X_test = np.array(X_test)
-feature_dims = X_test.shape[1]
-
-test_ds = CiteDataset_test(X_test)
-test_dataloader = DataLoader(test_ds, batch_size=128, pin_memory=True, 
-                              shuffle=False, drop_last=False, num_workers=4)
-
-if 'mish' in i:
-    model = CiteModel_mish(feature_dims)
-else:
-    model = CiteModel(feature_dims)
-    
-model = model.to(device)
-model.load_state_dict(torch.load(f'{cite_mlp_path}/{i}'))
-
-result = test_loop(model, test_dataloader).astype(np.float32)
-pred_16 += result
-
-torch.cuda.empty_cache()
-        
-pd.DataFrame(pred_16)
-# -
-
-pd.DataFrame(private_test_target.X)
-
-pd.DataFrame(private_test_target_raw.X.toarray())
-
-pd.concat([pd.DataFrame(pred_16), pd.DataFrame(private_test_target.X)]).corr().head()
-
-# +
-# TODO check svd output to see if svd model is correct
 # -
 
 # ### - add cell_ids to train and test data
