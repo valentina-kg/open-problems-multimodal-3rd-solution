@@ -66,7 +66,7 @@ train_ids = np.load(raw_path + "train_cite_raw_inputs_idxcol.npz", allow_pickle=
 test_ids = np.load(raw_path + "test_cite_raw_inputs_idxcol.npz", allow_pickle=True)
 
 train_index = train_ids["index"]
-train_column = train_ids["columns"]
+train_column = train_ids["columns"]   # sorted alphabetically
 test_index = test_ids["index"]
 # -
 
@@ -226,8 +226,8 @@ important_cols_84 = important_cols
 important_cols_120 = important_cols + next_important_cols
 
 use_imp_cols_84 =  [i for i, j in enumerate(train_column) if j in important_cols_84]
-use_cols_84 = [i for i, j in enumerate(train_column) if j not in important_cols_84]
-norm_cols_84 = [j for i, j in enumerate(train_column) if j not in important_cols_84]
+use_cols_84 = [i for i, j in enumerate(train_column) if j not in important_cols_84]  
+norm_cols_84 = [j for i, j in enumerate(train_column) if j not in important_cols_84]   # == all_22001_genes; sorted alphabetically
 
 use_imp_cols_120 =  [i for i, j in enumerate(train_column) if j in important_cols_120]
 use_cols_120 = [i for i, j in enumerate(train_column) if j not in important_cols_120]
@@ -237,16 +237,13 @@ print(len(use_imp_cols_84), len(use_imp_cols_120))
 print(len(use_cols_84), len(use_cols_120))
 # -
 
-all_genes = [j for i, j in enumerate(train_column) if j not in important_cols_84]
-all_genes[:10]
+use_imp_cols_84_gene_ids = [j for i, j in enumerate(train_column) if j in important_cols_84]   # == handselected_84_gene_ids; sorted alphabetically
 
-np.savetxt('all_genes_names.txt', all_genes, fmt='%s')
+np.savetxt('all_22001_genes_names.txt', norm_cols_84, fmt='%s')
 
-len(train_column)
+np.savetxt('handselected_84_gene_ids.txt', use_imp_cols_84_gene_ids, fmt='%s')
 
-train_column[[use_imp_cols_84[80]]]
-
-use_imp_cols_84    # indices of important cols in train_column
+use_imp_cols_84[:10]    # 84 indices of important cols in train_column
 
 np.savetxt('use_imp_cols_84.txt', use_imp_cols_84, fmt='%s')
 np.savetxt('use_cols_84.txt', use_cols_84, fmt='%s')
