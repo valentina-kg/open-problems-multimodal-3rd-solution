@@ -361,17 +361,13 @@ np.max(fit_transf_all - result_svd)
 # #### analyze svd components and explained variance
 
 print(svd_loaded.components_.shape)
-svd_loaded.components_
-
-svd_loaded.explained_variance_ratio_.sum()
-
 pd.DataFrame(svd_loaded.components_)
-
-svd_loaded.components_
 
 np.sort(svd_loaded.components_[0])[::-1][:80]
 
 svd_loaded.explained_variance_ratio_   # len = 128
+
+svd_loaded.explained_variance_ratio_.sum()
 
 # +
 # Create x-axis values from 0 to 127
