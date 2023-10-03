@@ -38,5 +38,7 @@ attribution_analysis.ipynb
 - plot distributions
 
 
-140_classes.ipynb:
-- handle and analyse all 140 protein classes instead of just 1
+quantify_results.ipynb:
+- propose new ranking of SHAP values for cases where ordering by highest mean attribution does not work
+- use KL divergence to compute the difference between the average attribution distribution and the attribution distribution of a specific gene
+- higher KL divergence <=> higher importance of this gene

@@ -33,7 +33,12 @@ from sklearn.preprocessing import StandardScaler
 
 import pickle
 import matplotlib.pyplot as plt
+# -
 
+
+import scanpy as sc
+sc.set_figure_params(dpi=100, frameon=False, color_map='Reds', facecolor=None)
+sc.logging.print_header()
 
 # +
 # %%time
@@ -373,17 +378,18 @@ svd_loaded.explained_variance_ratio_.sum()
 # Create x-axis values from 0 to 127
 x = range(128)
 
+plt.figure(figsize=(8,5))
 plt.plot(x, svd_loaded.explained_variance_ratio_)
 
 
 tick_locations = range(0, 128, 10)
 tick_labels = [f"svd_{i}" for i in tick_locations]
 
-plt.xticks(tick_locations, tick_labels, rotation=90)
+plt.xticks(tick_locations, tick_labels, rotation=70)
 
 plt.xlabel("SVD Components")
 plt.ylabel("Explained Variance")
-
+plt.grid(False)
 plt.show()
 # -
 
